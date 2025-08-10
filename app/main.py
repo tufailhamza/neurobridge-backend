@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from src.routes.auth import router as auth_router
-from src.routes.posts import router as posts_router
-from src.routes.clinicians import router as clinicians_router
-from src.routes.stripe import router as stripe_router
+from app.src.routes.auth import router as auth_router
+from app.src.routes.posts import router as posts_router
+from app.src.routes.clinicians import router as clinicians_router
+from app.src.routes.stripe import router as stripe_router
 
 app = FastAPI(
     title="NeuroBridge API",
