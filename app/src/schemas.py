@@ -112,3 +112,13 @@ class SubscriptionResponse(BaseModel):
     caregiver_id: int
     subscribed_clinician_id: int
     message: str
+
+# Stripe schemas
+class StripeCustomerRequest(BaseModel):
+    user_id: int
+    email: str
+
+class StripeCustomerResponse(BaseModel):
+    user_id: int
+    stripe_customer_id: str
+    email: str

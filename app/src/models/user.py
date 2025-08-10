@@ -44,3 +44,6 @@ class User(Base):
     # Relationships to Clinician and Caregiver tables
     clinician = relationship("src.models.clinician.Clinician", back_populates="user", uselist=False, lazy="select")
     caregiver = relationship("src.models.caregivers.Caregiver", back_populates="user", uselist=False, lazy="select")
+    
+    # Stripe integration
+    stripe_customer_id = Column(String, nullable=True, unique=True)
