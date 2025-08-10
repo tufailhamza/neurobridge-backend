@@ -7,15 +7,15 @@ from sqlalchemy import (
     Enum,
     DateTime,
     Boolean,
-    func
+    func,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.declarative import declarative_base
 import enum
 
 class UserRole(enum.Enum):
     clinician = "clinician"
-    caretaker = "caretaker"
+    caretaker = "caregiver"
     admin = "admin"
 
 class User(Base):
@@ -24,6 +24,7 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False)
+    password = Column(String, nullable=False)
     name = Column(String, nullable=True)
     role = Column(Enum(UserRole), nullable=False)
 
@@ -39,3 +40,7 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships to Clinician and Caregiver tables
+    clinician = relationship("src.models.clinician.Clinician", back_populates="user", uselist=False, lazy="select")
+    caregiver = relationship("src.models.caregivers.Caregiver", back_populates="user", uselist=False, lazy="select")
