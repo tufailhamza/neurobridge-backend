@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from .models.user import UserRole
 from datetime import datetime
 
 class UserLogin(BaseModel):
@@ -15,8 +14,7 @@ class Token(BaseModel):
 class UserResponse(BaseModel):
     user_id: int
     email: str
-    name: Optional[str] = None
-    role: UserRole
+    role: str
     
     class Config:
         from_attributes = True
@@ -113,6 +111,7 @@ class ClinicianResponse(BaseModel):
     clinician_type: str
     license_number: str
     area_of_expertise: str
+    content_preferences_tags: Optional[list[str]] = None
     
     class Config:
         from_attributes = True

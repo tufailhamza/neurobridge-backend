@@ -3,13 +3,12 @@ from sqlalchemy import (
     String,
     Integer,
     Boolean,
-    Enum,
     ForeignKey,
+    Text,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects.postgresql import ARRAY
 from .base import Base
-import enum
 
 
 class Clinician(Base):
@@ -30,6 +29,7 @@ class Clinician(Base):
     clinician_type = Column(String, nullable=False)
     license_number = Column(String, nullable=False)
     area_of_expertise = Column(String, nullable=False)
+    content_preferences_tags = Column(ARRAY(Text), nullable=True)
     
     # Relationship to User table
     user = relationship("User", back_populates="clinician")

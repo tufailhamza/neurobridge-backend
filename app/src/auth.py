@@ -6,6 +6,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from .models.user import User
+from .models.caregivers import Caregiver
+from .models.clinician import Clinician
 from .models.base import get_db
 from .config import *
 
@@ -73,14 +75,80 @@ def create_user(db, user_data, role):
     user = User(
         email=user_data.email,
         password=hashed_password,
-        name=f"{user_data.firstName} {user_data.lastName}",
         role=role
     )
     
-    # Add to database
+    # Add user to database
     db.add(user)
     db.commit()
     db.refresh(user)
+    
+    # If this is a caregiver, also create caregiver record
+    if role == "caregiver":
+        try:
+            # Create caregiver object with all the required fields
+            caregiver = Caregiver(
+                user_id=user.user_id,
+                first_name=user_data.firstName,
+                last_name=user_data.lastName,
+                username=user_data.firstName.lower() + user_data.lastName.lower(),  # Generate username
+                country=user_data.country,
+                city=user_data.city,
+                state=user_data.state,
+                zip_code=user_data.zipCode,
+                caregiver_role=user_data.caregiverRole,
+                childs_age=int(user_data.childAge) if user_data.childAge.isdigit() else 0,
+                diagnosis=user_data.diagnosis,
+                years_of_diagnosis=int(user_data.yearsOfDiagnosis) if user_data.yearsOfDiagnosis.isdigit() else 0,
+                make_name_public=False,  # Default value
+                make_personal_details_public=False,  # Default value
+                profile_image=None,  # Default value
+                cover_image=None,  # Default value
+                content_preferences_tags=[],  # Default empty array
+                bio="",  # Default empty bio
+                subscribed_clinicians_ids=[],  # Default empty array
+                purchased_feed_content_ids=[]  # Default empty array
+            )
+            
+            # Add caregiver to database
+            db.add(caregiver)
+            db.commit()
+            
+        except Exception as e:
+            # If caregiver creation fails, rollback user creation
+            db.rollback()
+            return None, f"Failed to create caregiver profile: {str(e)}"
+    
+    # If this is a clinician, also create clinician record
+    elif role == "clinician":
+        try:
+            # Create clinician object with all the required fields
+            clinician = Clinician(
+                user_id=user.user_id,
+                specialty=user_data.areaOfExpertise,  # Map areaOfExpertise to specialty
+                profile_image=None,  # Default value
+                is_subscribed=False,  # Default value
+                prefix=user_data.prefix,
+                first_name=user_data.firstName,
+                last_name=user_data.lastName,
+                country=user_data.country,
+                city=user_data.city,
+                state=user_data.state,
+                zip_code=user_data.zipCode,
+                clinician_type=user_data.clinicianType,
+                license_number=user_data.licenseNumber,
+                area_of_expertise=user_data.areaOfExpertise,
+                content_preferences_tags=[]  # Default empty array
+            )
+            
+            # Add clinician to database
+            db.add(clinician)
+            db.commit()
+            
+        except Exception as e:
+            # If clinician creation fails, rollback user creation
+            db.rollback()
+            return None, f"Failed to create clinician profile: {str(e)}"
     
     return user, None
 
