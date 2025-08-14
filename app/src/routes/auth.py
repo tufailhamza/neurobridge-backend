@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from ..models.base import get_db
 from ..models.user import User
+from ..models.caregivers import Caregiver
+from ..models.clinician import Clinician
 from ..schemas import UserLogin, LoginResponse, CaregiverSignup, ClinicianSignup, SignupResponse
 from ..auth import authenticate_user, create_access_token, create_user
 from ..config import *
@@ -57,16 +59,37 @@ async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Get username from the appropriate profile table based on role
+    username = ""
+    if user.role == "caregiver":
+        caregiver = db.query(Caregiver).filter(Caregiver.user_id == user.user_id).first()
+        if caregiver:
+            username = caregiver.username
+    elif user.role == "clinician":
+        clinician = db.query(Clinician).filter(Clinician.user_id == user.user_id).first()
+        if clinician:
+            # For clinicians, we can use first_name + last_name as username or create a username field
+            username = f"{clinician.first_name}_{clinician.last_name}".lower()
+    
     # Create access token
     access_token_expires = timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.user_id)}, expires_delta=access_token_expires
     )
-    print(f"aaaaaaaaaaaaaaaaaaaaa {user.role}")
+    
+    # Create UserResponse with username
+    from ..schemas import UserResponse
+    user_response = UserResponse(
+        user_id=user.user_id,
+        email=user.email,
+        role=user.role,
+        name=username
+    )
+    
     # Return token and user info
     return LoginResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in=JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
-        user=user
+        user=user_response
     )

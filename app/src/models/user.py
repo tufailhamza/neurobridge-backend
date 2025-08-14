@@ -34,3 +34,6 @@ class User(Base):
     
     # Relationship to collections
     collections = relationship("Collection", back_populates="user")
+    
+    # Relationship to user tracking
+    user_tracking = relationship("UserTracking", back_populates="user", uselist=False, lazy="select")

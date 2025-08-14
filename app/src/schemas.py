@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     user_id: int
     email: str
     role: str
+    name: str
     
     class Config:
         from_attributes = True
