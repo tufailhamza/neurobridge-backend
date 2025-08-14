@@ -236,6 +236,7 @@ async def update_user_profile(
                     detail="Clinician profile not found"
                 )
             
+            
             # Update only the fields that are provided
             if 'specialty' in body and body['specialty'] is not None:
                 clinician.specialty = body['specialty']
