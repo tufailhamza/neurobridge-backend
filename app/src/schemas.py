@@ -136,3 +136,16 @@ class StripeCustomerResponse(BaseModel):
     user_id: int
     stripe_customer_id: str
     email: str
+
+# Collection schemas
+class CollectionResponse(BaseModel):
+    collection_id: int
+    user_id: int
+    name: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class CollectionCreate(BaseModel):
+    name: str

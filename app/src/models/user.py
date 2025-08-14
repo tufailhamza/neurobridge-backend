@@ -50,3 +50,6 @@ class User(Base):
     
     # Relationship to posts
     posts = relationship("Post", back_populates="user")
+    
+    # Relationship to collections
+    collections = relationship("Collection", back_populates="user")
