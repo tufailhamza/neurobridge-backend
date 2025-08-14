@@ -7,6 +7,7 @@ from src.routes.clinicians import router as clinicians_router
 from src.routes.stripe import router as stripe_router
 from src.routes.collections import router as collections_router
 from src.routes.preferences import router as preferences_router
+from src.routes.profile import router as profile_router
 
 app = FastAPI(
     title="NeuroBridge API",
@@ -28,6 +29,7 @@ app.include_router(clinicians_router)
 app.include_router(stripe_router)
 app.include_router(collections_router)
 app.include_router(preferences_router)
+app.include_router(profile_router)
 
 @app.get("/health")
 def health_check():
