@@ -47,3 +47,6 @@ class User(Base):
     
     # Stripe integration
     stripe_customer_id = Column(String, nullable=True, unique=True)
+    
+    # Relationship to posts
+    posts = relationship("Post", back_populates="user")

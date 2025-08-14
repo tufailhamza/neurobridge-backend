@@ -1,23 +1,24 @@
+# src/models/post.py
+from .base import Base
 from sqlalchemy import (
     Column,
     String,
     Integer,
-    Boolean,
-    DateTime,
-    Float,
-    Enum,
-    ForeignKey,
     Text,
-    ARRAY,
+    Boolean,
+    Float,
+    DateTime,
+    func,
+    ForeignKey
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import relationship
 import enum
-from datetime import datetime
-from .base import Base
 
 class TierEnum(enum.Enum):
-    public = "public"
-    paid = "paid"
+    free = "free"
+    premium = "premium"
+    exclusive = "exclusive"
 
 class Post(Base):
     __tablename__ = "posts"
@@ -26,15 +27,19 @@ class Post(Base):
     id = Column(String, primary_key=True, index=True)
     image_url = Column(String, nullable=False)
     title = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey("ariadne.users.user_id"))
-    user = relationship("User")  # Assuming User model is imported or defined
-    date = Column(String, nullable=True)  # or DateTime if you prefer
+    user_id = Column(Integer, ForeignKey("ariadne.users.user_id"), nullable=True)
+    date = Column(String, nullable=True)
     read_time = Column(String, nullable=True)
     tags = Column(ARRAY(String), nullable=True)
-    price = Column(Float, nullable=True, default=0)
+    price = Column(Float, nullable=True)
     html_content = Column(Text, nullable=False)
-    allow_comments = Column(Boolean, default=True)
-    tier = Column(Enum(TierEnum), nullable=False, default=TierEnum.public)
+    allow_comments = Column(Boolean, nullable=True)
+    tier = Column(String, nullable=False)  # Using String instead of Enum for flexibility
     collection = Column(String, nullable=True)
-    attachments = Column(ARRAY(String), nullable=True)  # URLs as array
-    date_published = Column(DateTime, default=datetime.utcnow)
+    attachments = Column(ARRAY(String), nullable=True)
+    date_published = Column(DateTime, nullable=True)
+    user_name = Column(String(255), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationship to User
+    user = relationship("User", back_populates="posts")

@@ -64,6 +64,19 @@ class SignupResponse(BaseModel):
     user_id: int
 
 # Post schemas
+class PostCreate(BaseModel):
+    image_url: str
+    title: str
+    read_time: str
+    tags: list[str]
+    price: Optional[float] = None
+    html_content: str
+    allow_comments: Optional[bool] = True
+    tier: str
+    collection: Optional[str] = None
+    attachments: Optional[list[str]] = None
+    date_published: Optional[datetime] = None
+
 class PostResponse(BaseModel):
     id: str
     image_url: str
@@ -72,13 +85,15 @@ class PostResponse(BaseModel):
     date: str
     read_time: str
     tags: list[str]
-    price: float
+    price: Optional[float] = None
     html_content: str
     allow_comments: bool
     tier: str
-    collection: str
+    collection: Optional[str] = None
     attachments: Optional[list[str]] = None
-    date_published: datetime
+    date_published: Optional[datetime] = None
+    user_name: Optional[str] = None
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
