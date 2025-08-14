@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List
 import uuid
 from datetime import datetime
+from bs4 import BeautifulSoup
+import math
 
 from ..models.base import get_db
 from ..models.post import Post
@@ -12,6 +14,16 @@ from ..schemas import PostCreate, PostResponse
 from ..auth import get_current_user
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+def _calculate_read_time(html_content: str, wpm: int = 200) -> int:
+    soup = BeautifulSoup(html_content, "html.parser")
+    text = soup.get_text(separator=" ", strip=True)
+    words = text.split()
+    word_count = len(words)
+    minutes = math.ceil(word_count / wpm)
+
+    return f"{minutes} min read"
+
 
 @router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 def create_post(
@@ -33,7 +45,7 @@ def create_post(
             title=post_data.title,
             user_id=current_user.user_id,
             date=datetime.now().strftime("%Y-%m-%d"),
-            read_time=post_data.read_time,
+            read_time=_calculate_read_time(post_data.html_content),
             tags=post_data.tags,
             price=post_data.price,
             html_content=post_data.html_content,

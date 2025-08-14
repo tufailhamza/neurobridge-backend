@@ -67,7 +67,6 @@ class SignupResponse(BaseModel):
 class PostCreate(BaseModel):
     image_url: str
     title: str
-    read_time: str
     tags: list[str]
     price: Optional[float] = None
     html_content: str
