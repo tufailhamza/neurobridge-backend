@@ -43,9 +43,13 @@ def create_access_token(data, expires_delta):
 def verify_token(token):
     """Verify and decode a JWT token."""
     try:
+        print(f"🔍 Verifying token: {token[:20]}...")
+        print(f"🔑 Using JWT_SECRET_KEY: {JWT_SECRET_KEY[:10]}...")
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        print(f"✅ Token verified successfully. Payload: {payload}")
         return payload
-    except JWTError:
+    except JWTError as e:
+        print(f"❌ JWT verification failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -157,10 +161,16 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get the current authenticated user from JWT token."""
+    print(f"🔐 Getting current user...")
     token = credentials.credentials
+    print(f"📝 Token received: {token[:20]}...")
+    
     payload = verify_token(token)
     user_id: int = payload.get("sub")
+    print(f"👤 User ID from token: {user_id}")
+    
     if user_id is None:
+        print("❌ No user ID found in token payload")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -169,9 +179,12 @@ def get_current_user(
     
     user = db.query(User).filter(User.user_id == user_id).first()
     if user is None:
+        print(f"❌ User with ID {user_id} not found in database")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    print(f"✅ User authenticated: {user.email} (ID: {user.user_id})")
     return user

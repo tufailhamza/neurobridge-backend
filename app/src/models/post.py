@@ -40,6 +40,8 @@ class Post(Base):
     date_published = Column(DateTime, nullable=True)
     user_name = Column(String(255), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    stripe_price_id = Column(String(255), nullable=True)
+    stripe_product_id = Column(String(255), nullable=True)
 
     # Relationship to User
     user = relationship("User", back_populates="posts")

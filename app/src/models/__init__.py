@@ -6,3 +6,4 @@ from .user import User
 from .collections import Collection
 # from .channels import Channel
 from .user_tracking import UserTracking
+from .purchases import Purchase

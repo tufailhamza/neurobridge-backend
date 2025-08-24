@@ -74,6 +74,8 @@ class PostCreate(BaseModel):
     collection: Optional[str] = None
     attachments: Optional[list[str]] = None
     date_published: Optional[datetime] = None
+    # Note: stripe_price_id and stripe_product_id are generated automatically
+    # and should not be provided in the request
 
 class PostResponse(BaseModel):
     id: str
@@ -92,6 +94,8 @@ class PostResponse(BaseModel):
     date_published: Optional[datetime] = None
     user_name: Optional[str] = None
     updated_at: Optional[datetime] = None
+    stripe_price_id: Optional[str] = None
+    stripe_product_id: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -136,6 +140,39 @@ class StripeCustomerResponse(BaseModel):
     user_id: int
     stripe_customer_id: str
     email: str
+
+class StripeCheckoutRequest(BaseModel):
+    priceId: str
+    successUrl: str
+    cancelUrl: str
+    metadata: dict
+
+class StripeCheckoutResponse(BaseModel):
+    sessionId: str
+
+class StripeVerifyRequest(BaseModel):
+    sessionId: str
+
+class StripeVerifyResponse(BaseModel):
+    success: bool
+    paymentStatus: str
+    amount: int
+    currency: str
+
+class PurchaseResponse(BaseModel):
+    id: int
+    user_id: str
+    content_id: str
+    stripe_session_id: Optional[str] = None
+    stripe_payment_intent_id: Optional[str] = None
+    amount: int
+    currency: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 # Collection schemas
 class CollectionResponse(BaseModel):
