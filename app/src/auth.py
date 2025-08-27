@@ -65,12 +65,15 @@ def authenticate_user(db, email, password):
         return None
     return user
 
+def check_email_exists(db, email):
+    """Check if an email already exists in the database."""
+    return db.query(User).filter(User.email == email).first() is not None
+
 def create_user(db, user_data, role):
     """Create a new user in the database."""
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        return None, "User with this email already exists"
+    if check_email_exists(db, user_data.email):
+        return None, "An account with this email already exists"
     
     # Hash the password
     hashed_password = get_password_hash(user_data.password)

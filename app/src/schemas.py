@@ -62,6 +62,11 @@ class SignupResponse(BaseModel):
     message: str
     user_id: int
 
+class EmailCheckResponse(BaseModel):
+    email: str
+    exists: bool
+    message: str
+
 # Post schemas
 class PostCreate(BaseModel):
     image_url: str

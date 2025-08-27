@@ -5,17 +5,45 @@ from ..models.base import get_db
 from ..models.user import User
 from ..models.caregivers import Caregiver
 from ..models.clinician import Clinician
-from ..schemas import UserLogin, LoginResponse, CaregiverSignup, ClinicianSignup, SignupResponse
+from ..schemas import UserLogin, LoginResponse, CaregiverSignup, ClinicianSignup, SignupResponse, EmailCheckResponse
 from ..auth import authenticate_user, create_access_token, create_user
 from ..config import *
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+@router.get("/check-email/{email}", response_model=EmailCheckResponse)
+async def check_email_exists(email: str, db: Session = Depends(get_db)):
+    """
+    Check if an email already exists in the system
+    """
+    existing_user = db.query(User).filter(User.email == email).first()
+    
+    if existing_user:
+        return EmailCheckResponse(
+            email=email,
+            exists=True,
+            message="Email already exists in the system"
+        )
+    else:
+        return EmailCheckResponse(
+            email=email,
+            exists=False,
+            message="Email is available for registration"
+        )
 
 @router.post("/signup/caregiver", response_model=SignupResponse)
 async def signup_caregiver(user_data: CaregiverSignup, db: Session = Depends(get_db)):
     """
     Create a new caregiver account
     """
+    # Check if email already exists
+    from ..auth import check_email_exists
+    if check_email_exists(db, user_data.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists"
+        )
+    
     user, error = create_user(db, user_data, "caregiver")
     if error:
         raise HTTPException(
@@ -33,6 +61,14 @@ async def signup_clinician(user_data: ClinicianSignup, db: Session = Depends(get
     """
     Create a new clinician account
     """
+    # Check if email already exists
+    from ..auth import check_email_exists
+    if check_email_exists(db, user_data.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists"
+        )
+    
     user, error = create_user(db, user_data, "clinician")
     if error:
         raise HTTPException(
