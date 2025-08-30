@@ -45,3 +45,6 @@ class Post(Base):
 
     # Relationship to User
     user = relationship("User", back_populates="posts")
+    
+    # Relationship to purchases
+    purchases = relationship("PostPurchase", back_populates="post")

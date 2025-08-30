@@ -11,12 +11,12 @@ from sqlalchemy.orm import joinedload
 router = APIRouter(prefix="/clinicians", tags=["clinicians"])
 
 @router.get("/clinicians", response_model=List[ClinicianResponse])
-async def get_clinicians(
+async def get_all_clinicians(
     limit: int = 50,
     db: Session = Depends(get_db)
 ):
     """
-    Get all clinicians from the database
+    Get all clinicians from the database (similar to caregivers endpoint)
     Default: returns up to 50 clinicians
     """
     try:
@@ -46,10 +46,18 @@ async def get_clinician_by_user_id(
         clinician = db.query(Clinician).filter(Clinician.user_id == user_id).first()
         
         if not clinician:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Clinician with user_id {user_id} not found"
-            )
+            # Check if user exists at all
+            user = db.query(User).filter(User.user_id == user_id).first()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User with ID {user_id} not found"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User {user_id} exists but is not a clinician"
+                )
         
         return clinician
         
@@ -256,22 +264,28 @@ async def get_unsubscribed_clinicians(
     try:
         print(f"Looking for caregiver with user_id: {caregiver_id}")
         
+        # First check if user exists at all
+        user = db.query(User).filter(User.user_id == caregiver_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {caregiver_id} not found"
+            )
+        
+        # Check if user is a caregiver
+        if user.role != "caregiver":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User {caregiver_id} is a {user.role}, not a caregiver. This endpoint is for caregivers only."
+            )
+        
         # Get the caregiver from caregivers table
         caregiver = db.query(Caregiver).filter(Caregiver.user_id == caregiver_id).first()
         if not caregiver:
-            # Check if user exists at all
-            from ..models.user import User
-            user = db.query(User).filter(User.user_id == caregiver_id).first()
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"User with ID {caregiver_id} not found"
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"User {caregiver_id} exists but is not a caregiver"
-                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Caregiver profile not found for user {caregiver_id}"
+            )
         
         # Get all clinicians
         all_clinicians = db.query(Clinician).all()
@@ -319,3 +333,177 @@ async def debug_caregivers(db: Session = Depends(get_db)):
         }
     except Exception as e:
         return {"error": str(e)}
+
+# Clinician-specific endpoints similar to caregivers
+
+@router.get("/{user_id}", response_model=ClinicianResponse)
+async def get_clinician_by_id_simple(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get a specific clinician by user_id (simple endpoint like caregivers)
+    """
+    try:
+        clinician = db.query(Clinician).filter(Clinician.user_id == user_id).first()
+        
+        if not clinician:
+            # Check if user exists at all
+            user = db.query(User).filter(User.user_id == user_id).first()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User with ID {user_id} not found"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User {user_id} exists but is not a clinician"
+                )
+        
+        return clinician
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching clinician: {str(e)}"
+        )
+
+@router.get("/clinician/{user_id}", response_model=ClinicianResponse)
+async def get_clinician_by_id(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get a specific clinician by user_id (similar to caregiver endpoint)
+    """
+    try:
+        clinician = db.query(Clinician).filter(Clinician.user_id == user_id).first()
+        
+        if not clinician:
+            # Check if user exists at all
+            user = db.query(User).filter(User.user_id == user_id).first()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User with ID {user_id} not found"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User {user_id} exists but is not a clinician"
+                )
+        
+        return clinician
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching clinician: {str(e)}"
+        )
+
+@router.get("/debug/clinicians")
+async def debug_clinicians(db: Session = Depends(get_db)):
+    """
+    Debug endpoint to see what clinicians exist
+    """
+    try:
+        clinicians = db.query(Clinician).all()
+        return {
+            "total_clinicians": len(clinicians),
+            "clinician_ids": [c.user_id for c in clinicians],
+            "clinicians": [
+                {
+                    "user_id": c.user_id,
+                    "first_name": c.first_name,
+                    "last_name": c.last_name,
+                    "specialty": c.specialty
+                } for c in clinicians
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.get("/debug/users")
+async def debug_users(db: Session = Depends(get_db)):
+    """
+    Debug endpoint to see all users and their roles
+    """
+    try:
+        users = db.query(User).all()
+        return {
+            "total_users": len(users),
+            "users": [
+                {
+                    "user_id": u.user_id,
+                    "email": u.email,
+                    "role": u.role
+                } for u in users
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.get("/debug/user/{user_id}")
+async def debug_user_by_id(user_id: int, db: Session = Depends(get_db)):
+    """
+    Debug endpoint to see a specific user's details
+    """
+    try:
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            return {"error": f"User {user_id} not found"}
+        
+        result = {
+            "user_id": user.user_id,
+            "email": user.email,
+            "role": user.role
+        }
+        
+        # Check if user has a caregiver profile
+        caregiver = db.query(Caregiver).filter(Caregiver.user_id == user_id).first()
+        if caregiver:
+            result["caregiver_profile"] = {
+                "first_name": caregiver.first_name,
+                "last_name": caregiver.last_name,
+                "username": caregiver.username
+            }
+        
+        # Check if user has a clinician profile
+        clinician = db.query(Clinician).filter(Clinician.user_id == user_id).first()
+        if clinician:
+            result["clinician_profile"] = {
+                "first_name": clinician.first_name,
+                "last_name": clinician.last_name,
+                "specialty": clinician.specialty
+            }
+        
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.get("/except/{exclude_id}", response_model=List[ClinicianResponse])
+async def get_all_clinicians_except(
+    exclude_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all clinicians except the one with the specified ID
+    """
+    try:
+        # Query all clinicians except the one with exclude_id
+        clinicians = db.query(Clinician).filter(
+            Clinician.user_id != exclude_id
+        ).all()
+        
+        return clinicians
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching clinicians: {str(e)}"
+        )

@@ -306,6 +306,34 @@ async def handle_checkout_session_completed(session, db: Session):
                 purchase.stripe_payment_intent_id = session.payment_intent
             db.commit()
             logger.info(f"Purchase {purchase.id} marked as completed")
+            
+            # Create post purchase record
+            try:
+                from ..models.post_purchases import PostPurchase
+                
+                # Check if post purchase already exists
+                existing_post_purchase = db.query(PostPurchase).filter(
+                    PostPurchase.user_id == int(purchase.user_id),
+                    PostPurchase.post_id == purchase.content_id
+                ).first()
+                
+                if not existing_post_purchase:
+                    post_purchase = PostPurchase(
+                        user_id=int(purchase.user_id),
+                        post_id=purchase.content_id,
+                        purchase_id=purchase.id,
+                        amount=purchase.amount,
+                        currency=purchase.currency
+                    )
+                    db.add(post_purchase)
+                    db.commit()
+                    logger.info(f"Post purchase record created for user {purchase.user_id} and post {purchase.content_id}")
+                else:
+                    logger.info(f"Post purchase record already exists for user {purchase.user_id} and post {purchase.content_id}")
+                    
+            except Exception as e:
+                logger.error(f"Error creating post purchase record: {str(e)}")
+                # Don't rollback the main purchase update
         
     except Exception as e:
         db.rollback()

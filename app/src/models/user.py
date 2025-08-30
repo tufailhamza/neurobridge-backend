@@ -37,3 +37,6 @@ class User(Base):
     
     # Relationship to user tracking
     user_tracking = relationship("UserTracking", back_populates="user", uselist=False, lazy="select")
+    
+    # Relationship to post purchases
+    post_purchases = relationship("PostPurchase", back_populates="user")

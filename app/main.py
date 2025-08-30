@@ -11,6 +11,7 @@ from src.routes.profile import router as profile_router
 from src.routes.caregivers import router as caregivers_router
 # from src.routes.channels import router as channels_router
 from src.routes.tracking import router as tracking_router
+from src.routes.post_purchases import router as post_purchases_router
 
 app = FastAPI(
     title="NeuroBridge API",
@@ -35,6 +36,7 @@ app.include_router(preferences_router)
 app.include_router(profile_router)
 app.include_router(caregivers_router)
 app.include_router(tracking_router)
+app.include_router(post_purchases_router)
 # app.include_router(channels_router)
 
 @app.get("/health")

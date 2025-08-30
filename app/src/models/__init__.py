@@ -7,3 +7,4 @@ from .collections import Collection
 # from .channels import Channel
 from .user_tracking import UserTracking
 from .purchases import Purchase
+from .post_purchases import PostPurchase

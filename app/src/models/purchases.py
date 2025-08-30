@@ -27,3 +27,6 @@ class Purchase(Base):
     # Relationships - commented out due to type mismatch between String and Integer
     # user = relationship("User", foreign_keys=[user_id], primaryjoin="Purchase.user_id == User.user_id")
     # content = relationship("Post", foreign_keys=[content_id], primaryjoin="Purchase.content_id == Post.id")
+    
+    # Relationship to post purchase
+    post_purchase = relationship("PostPurchase", back_populates="purchase", uselist=False)

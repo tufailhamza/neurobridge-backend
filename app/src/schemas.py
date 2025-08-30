@@ -67,6 +67,41 @@ class EmailCheckResponse(BaseModel):
     exists: bool
     message: str
 
+# Post Purchase schemas
+class PostPurchaseResponse(BaseModel):
+    id: int
+    user_id: int
+    post_id: str
+    amount: int
+    currency: str
+    purchased_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserPostPurchaseResponse(BaseModel):
+    user_id: int
+    user_email: str
+    user_name: str
+    post_id: str
+    post_title: str
+    amount: int
+    currency: str
+    purchased_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class PostPurchaseStatsResponse(BaseModel):
+    post_id: str
+    post_title: str
+    total_purchases: int
+    total_revenue: int
+    currency: str
+    
+    class Config:
+        from_attributes = True
+
 # Post schemas
 class PostCreate(BaseModel):
     image_url: str
