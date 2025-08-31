@@ -187,6 +187,8 @@ async def update_user_profile(
                 caregiver.cover_image = body['cover_image']
             if 'bio' in body:
                 caregiver.bio = body['bio']
+            if 'content_preferences_tags' in body:
+                caregiver.content_preferences_tags = body['content_preferences_tags']
             
             db.commit()
             
