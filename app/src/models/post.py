@@ -42,6 +42,7 @@ class Post(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     stripe_price_id = Column(String(255), nullable=True)
     stripe_product_id = Column(String(255), nullable=True)
+    scheduled_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationship to User
     user = relationship("User", back_populates="posts")

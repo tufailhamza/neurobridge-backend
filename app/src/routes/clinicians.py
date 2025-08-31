@@ -76,7 +76,7 @@ async def subscribe_to_clinician(
     db: Session = Depends(get_db)
 ):
     """
-    Subscribe a caregiver to a clinician
+    Subscribe a user (caregiver or clinician) to a clinician
     """
     try:
         # Check if clinician exists
@@ -87,45 +87,100 @@ async def subscribe_to_clinician(
                 detail="Clinician not found"
             )
         
-        # Check if caregiver exists in caregivers table
-        caregiver = db.query(Caregiver).filter(Caregiver.user_id == request.caregiver_id).first()
-        if not caregiver:
+        # Check if user exists and get their role
+        user = db.query(User).filter(User.user_id == request.caregiver_id).first()
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Caregiver not found"
+                detail="User not found"
             )
         
-        # Add clinician to subscribed list if not already subscribed
-        clinician_id_str = str(request.clinician_id)
-        
-        # Get current subscribed IDs, handle None case
-        current_subscribed = caregiver.subscribed_clinicians_ids or []
-        print(f"Current subscribed_clinicians_ids: {current_subscribed}")
-        
-        if clinician_id_str not in current_subscribed:
-            # Use direct SQL to append to the array - this will definitely work
-            from sqlalchemy import text
-            
-            # PostgreSQL array_append function to add the new clinician ID
-            db.execute(
-                text("""
-                    UPDATE ariadne.caregivers 
-                    SET subscribed_clinicians_ids = array_append(subscribed_clinicians_ids, :clinician_id) 
-                    WHERE user_id = :caregiver_id
-                """),
-                {"clinician_id": clinician_id_str, "caregiver_id": request.caregiver_id}
+        # Prevent self-subscription
+        if request.caregiver_id == request.clinician_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot subscribe to yourself"
             )
+        
+        # Handle caregiver subscription
+        if user.role == "caregiver":
+            caregiver = db.query(Caregiver).filter(Caregiver.user_id == request.caregiver_id).first()
+            if not caregiver:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Caregiver profile not found"
+                )
             
-            # Refresh the caregiver object to get updated data
-            db.refresh(caregiver)
-            print(f"Updated subscribed_clinicians_ids: {caregiver.subscribed_clinicians_ids}")
+            # Add clinician to subscribed list if not already subscribed
+            clinician_id_str = str(request.clinician_id)
+            current_subscribed = caregiver.subscribed_clinicians_ids or []
+            print(f"Current subscribed_clinicians_ids: {current_subscribed}")
             
-            db.commit()
+            if clinician_id_str not in current_subscribed:
+                # Use direct SQL to append to the array
+                from sqlalchemy import text
+                
+                db.execute(
+                    text("""
+                        UPDATE ariadne.caregivers 
+                        SET subscribed_clinicians_ids = array_append(subscribed_clinicians_ids, :clinician_id) 
+                        WHERE user_id = :caregiver_id
+                    """),
+                    {"clinician_id": clinician_id_str, "caregiver_id": request.caregiver_id}
+                )
+                
+                db.refresh(caregiver)
+                print(f"Updated subscribed_clinicians_ids: {caregiver.subscribed_clinicians_ids}")
+                db.commit()
+            else:
+                return SubscriptionResponse(
+                    caregiver_id=request.caregiver_id,
+                    subscribed_clinician_id=request.clinician_id,
+                    message="Already subscribed to this clinician"
+                )
+        
+        # Handle clinician subscription
+        elif user.role == "clinician":
+            # Get the clinician from clinicians table
+            subscribing_clinician = db.query(Clinician).filter(Clinician.user_id == request.caregiver_id).first()
+            if not subscribing_clinician:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Clinician profile not found"
+                )
+            
+            # Add clinician to subscribed list if not already subscribed
+            clinician_id_str = str(request.clinician_id)
+            current_subscribed = subscribing_clinician.subscribed_clinicians_ids or []
+            print(f"Current subscribed_clinicians_ids for clinician: {current_subscribed}")
+            
+            if clinician_id_str not in current_subscribed:
+                # Use direct SQL to append to the array
+                from sqlalchemy import text
+                
+                db.execute(
+                    text("""
+                        UPDATE ariadne.clinicians 
+                        SET subscribed_clinicians_ids = array_append(subscribed_clinicians_ids, :clinician_id) 
+                        WHERE user_id = :subscribing_clinician_id
+                    """),
+                    {"clinician_id": clinician_id_str, "subscribing_clinician_id": request.caregiver_id}
+                )
+                
+                db.refresh(subscribing_clinician)
+                print(f"Updated subscribed_clinicians_ids for clinician: {subscribing_clinician.subscribed_clinicians_ids}")
+                db.commit()
+            else:
+                return SubscriptionResponse(
+                    caregiver_id=request.caregiver_id,
+                    subscribed_clinician_id=request.clinician_id,
+                    message="Already subscribed to this clinician"
+                )
+        
         else:
-            return SubscriptionResponse(
-                caregiver_id=request.caregiver_id,
-                subscribed_clinician_id=request.clinician_id,
-                message="Already subscribed to this clinician"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User role '{user.role}' is not supported for clinician subscriptions"
             )
         
         return SubscriptionResponse(
@@ -222,28 +277,65 @@ async def get_clinicians_subscribed_by_client(
     db: Session = Depends(get_db)
 ):
     """
-    Get all clinicians that a specific client (caregiver) is subscribed to
+    Get all clinicians that a specific client (caregiver or clinician) is subscribed to
     """
     print(f"client_id: {client_id}")
     try:
-        # Get the caregiver from caregivers table
-        caregiver = db.query(Caregiver).filter(Caregiver.user_id == client_id).first()
-        if not caregiver:
+        # First check if user exists and get their role
+        user = db.query(User).filter(User.user_id == client_id).first()
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Caregiver not found"
+                detail="User not found"
             )
         
-        # If caregiver is not subscribed to any clinicians, return empty list
-        if not caregiver.subscribed_clinicians_ids or len(caregiver.subscribed_clinicians_ids) == 0:
-            return []
+        # Handle caregiver subscription
+        if user.role == "caregiver":
+            # Get the caregiver from caregivers table
+            caregiver = db.query(Caregiver).filter(Caregiver.user_id == client_id).first()
+            if not caregiver:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Caregiver profile not found"
+                )
+            
+            # If caregiver is not subscribed to any clinicians, return empty list
+            if not caregiver.subscribed_clinicians_ids or len(caregiver.subscribed_clinicians_ids) == 0:
+                return []
+            
+            # Get all clinicians that the caregiver is subscribed to
+            clinicians = db.query(Clinician).filter(
+                Clinician.user_id.in_(caregiver.subscribed_clinicians_ids)
+            ).all()
+            
+            return clinicians
         
-        # Get all clinicians that the caregiver is subscribed to
-        clinicians = db.query(Clinician).filter(
-            Clinician.user_id.in_(caregiver.subscribed_clinicians_ids)
-        ).all()
+        # Handle clinician subscription
+        elif user.role == "clinician":
+            # Get the clinician from clinicians table
+            clinician = db.query(Clinician).filter(Clinician.user_id == client_id).first()
+            if not clinician:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Clinician profile not found"
+                )
+            
+            # If clinician is not subscribed to any clinicians, return empty list
+            if not clinician.subscribed_clinicians_ids or len(clinician.subscribed_clinicians_ids) == 0:
+                return []
+            
+            # Get all clinicians that the clinician is subscribed to
+            subscribed_clinicians = db.query(Clinician).filter(
+                Clinician.user_id.in_(clinician.subscribed_clinicians_ids)
+            ).all()
+            
+            return subscribed_clinicians
         
-        return clinicians
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User role '{user.role}' is not supported for this endpoint"
+            )
         
     except HTTPException:
         raise
@@ -253,56 +345,66 @@ async def get_clinicians_subscribed_by_client(
             detail=f"Error fetching subscribed clinicians: {str(e)}"
         )
 
-@router.get("/unsubscribed/{caregiver_id}", response_model=List[ClinicianResponse])
+@router.get("/unsubscribed/{user_id}", response_model=List[ClinicianResponse])
 async def get_unsubscribed_clinicians(
-    caregiver_id: int,
+    user_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    Get all clinicians that a specific caregiver is NOT subscribed to
+    Get all clinicians that a specific user (caregiver or clinician) is NOT subscribed to
+    For clinicians, returns all other clinicians (excluding themselves)
+    For caregivers, returns all clinicians they're not subscribed to
     """
     try:
-        print(f"Looking for caregiver with user_id: {caregiver_id}")
+        print(f"Looking for user with user_id: {user_id}")
         
         # First check if user exists at all
-        user = db.query(User).filter(User.user_id == caregiver_id).first()
+        user = db.query(User).filter(User.user_id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {caregiver_id} not found"
-            )
-        
-        # Check if user is a caregiver
-        if user.role != "caregiver":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User {caregiver_id} is a {user.role}, not a caregiver. This endpoint is for caregivers only."
-            )
-        
-        # Get the caregiver from caregivers table
-        caregiver = db.query(Caregiver).filter(Caregiver.user_id == caregiver_id).first()
-        if not caregiver:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Caregiver profile not found for user {caregiver_id}"
+                detail=f"User with ID {user_id} not found"
             )
         
         # Get all clinicians
         all_clinicians = db.query(Clinician).all()
         
-        # If caregiver is not subscribed to any clinicians, return all clinicians
-        if not caregiver.subscribed_clinicians_ids or len(caregiver.subscribed_clinicians_ids) == 0:
-            return all_clinicians
+        # If user is a clinician, return all other clinicians (excluding themselves)
+        if user.role == "clinician":
+            unsubscribed_clinicians = db.query(Clinician).filter(
+                Clinician.user_id != user_id
+            ).all()
+            return unsubscribed_clinicians
         
-        # Get clinicians that the caregiver is NOT subscribed to
-        # Convert subscribed_clinicians_ids to integers for comparison
-        subscribed_ids = [int(cid) for cid in caregiver.subscribed_clinicians_ids if cid]
+        # If user is a caregiver, handle caregiver logic
+        elif user.role == "caregiver":
+            # Get the caregiver from caregivers table
+            caregiver = db.query(Caregiver).filter(Caregiver.user_id == user_id).first()
+            if not caregiver:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Caregiver profile not found for user {user_id}"
+                )
+            
+            # If caregiver is not subscribed to any clinicians, return all clinicians
+            if not caregiver.subscribed_clinicians_ids or len(caregiver.subscribed_clinicians_ids) == 0:
+                return all_clinicians
+            
+            # Get clinicians that the caregiver is NOT subscribed to
+            # Convert subscribed_clinicians_ids to integers for comparison
+            subscribed_ids = [int(cid) for cid in caregiver.subscribed_clinicians_ids if cid]
+            
+            unsubscribed_clinicians = db.query(Clinician).filter(
+                ~Clinician.user_id.in_(subscribed_ids)
+            ).all()
+            
+            return unsubscribed_clinicians
         
-        unsubscribed_clinicians = db.query(Clinician).filter(
-            ~Clinician.user_id.in_(subscribed_ids)
-        ).all()
-        
-        return unsubscribed_clinicians
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User {user_id} has role '{user.role}'. This endpoint is for caregivers and clinicians only."
+            )
         
     except HTTPException:
         raise

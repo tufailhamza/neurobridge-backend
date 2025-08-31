@@ -30,6 +30,7 @@ class Clinician(Base):
     license_number = Column(String, nullable=False)
     area_of_expertise = Column(String, nullable=False)
     content_preferences_tags = Column(ARRAY(Text), nullable=True)
+    subscribed_clinicians_ids = Column(ARRAY(Text), nullable=False, default=[])
     
     # Relationship to User table
     user = relationship("User", back_populates="clinician")

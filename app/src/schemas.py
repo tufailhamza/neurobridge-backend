@@ -114,6 +114,7 @@ class PostCreate(BaseModel):
     collection: Optional[str] = None
     attachments: Optional[list[str]] = None
     date_published: Optional[datetime] = None
+    scheduled_time: Optional[datetime] = None
     # Note: stripe_price_id and stripe_product_id are generated automatically
     # and should not be provided in the request
 
@@ -136,6 +137,7 @@ class PostResponse(BaseModel):
     updated_at: Optional[datetime] = None
     stripe_price_id: Optional[str] = None
     stripe_product_id: Optional[str] = None
+    scheduled_time: Optional[datetime] = None
     
     class Config:
         from_attributes = True

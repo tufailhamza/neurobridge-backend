@@ -6,7 +6,7 @@ load_dotenv()
 # JWT Configuration
 JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "300"))
 
 # Debug: Print JWT configuration
 print(f"🔧 JWT Configuration loaded:")
@@ -33,6 +33,11 @@ STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 # Environment
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 DEBUG: bool = ENVIRONMENT == "development"
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
 print(f"🌍 Environment: {ENVIRONMENT}")
 print(f"🐛 Debug: {DEBUG}")
