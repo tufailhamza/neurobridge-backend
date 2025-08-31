@@ -33,6 +33,7 @@ class Clinician(Base):
     subscribed_clinicians_ids = Column(ARRAY(Text), nullable=False, default=[])
     bio = Column(Text, nullable=False, default='')
     approach = Column(Text, nullable=False, default='')
+    cover_image = Column(String, nullable=True)
     
     # Relationship to User table
     user = relationship("User", back_populates="clinician")
