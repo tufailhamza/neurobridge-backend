@@ -101,11 +101,13 @@ async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         caregiver = db.query(Caregiver).filter(Caregiver.user_id == user.user_id).first()
         if caregiver:
             username = caregiver.username
+            metadata = caregiver
     elif user.role == "clinician":
         clinician = db.query(Clinician).filter(Clinician.user_id == user.user_id).first()
         if clinician:
             # For clinicians, we can use first_name + last_name as username or create a username field
             username = f"{clinician.first_name}_{clinician.last_name}".lower()
+            metadata = clinician
     
     # Create access token
     access_token_expires = timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -115,11 +117,19 @@ async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     
     # Create UserResponse with username
     from ..schemas import UserResponse
+    
+    # Create a clean metadata dictionary without SQLAlchemy internal attributes
+    clean_metadata = {}
+    for key, value in metadata.__dict__.items():
+        if not key.startswith('_'):
+            clean_metadata[key] = value    
+    
     user_response = UserResponse(
         user_id=user.user_id,
         email=user.email,
         role=user.role,
-        name=username
+        name=username,
+        metadata=clean_metadata
     )
     
     # Return token and user info
