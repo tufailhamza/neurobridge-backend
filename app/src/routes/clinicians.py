@@ -204,7 +204,7 @@ async def unsubscribe_from_clinician(
     db: Session = Depends(get_db)
 ):
     """
-    Unsubscribe a caregiver from a clinician
+    Unsubscribe a user (caregiver or clinician) from a clinician
     """
     try:
         # Check if clinician exists
@@ -215,45 +215,100 @@ async def unsubscribe_from_clinician(
                 detail="Clinician not found"
             )
         
-        # Check if caregiver exists in caregivers table
-        caregiver = db.query(Caregiver).filter(Caregiver.user_id == request.caregiver_id).first()
-        if not caregiver:
+        # Check if user exists and get their role
+        user = db.query(User).filter(User.user_id == request.caregiver_id).first()
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Caregiver not found"
+                detail="User not found"
             )
         
-        # Remove clinician from subscribed list if already subscribed
-        clinician_id_str = str(request.clinician_id)
-        
-        # Get current subscribed IDs, handle None case
-        current_subscribed = caregiver.subscribed_clinicians_ids or []
-        print(f"Current subscribed_clinicians_ids: {current_subscribed}")
-        
-        if clinician_id_str in current_subscribed:
-            # Use direct SQL to remove from the array
-            from sqlalchemy import text
-            
-            # PostgreSQL array_remove function to remove the clinician ID
-            db.execute(
-                text("""
-                    UPDATE ariadne.caregivers 
-                    SET subscribed_clinicians_ids = array_remove(subscribed_clinicians_ids, :clinician_id) 
-                    WHERE user_id = :caregiver_id
-                """),
-                {"clinician_id": clinician_id_str, "caregiver_id": request.caregiver_id}
+        # Prevent self-unsubscription
+        if request.caregiver_id == request.clinician_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot unsubscribe from yourself"
             )
+        
+        # Handle caregiver unsubscription
+        if user.role == "caregiver":
+            caregiver = db.query(Caregiver).filter(Caregiver.user_id == request.caregiver_id).first()
+            if not caregiver:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Caregiver profile not found"
+                )
             
-            # Refresh the caregiver object to get updated data
-            db.refresh(caregiver)
-            print(f"Updated subscribed_clinicians_ids: {caregiver.subscribed_clinicians_ids}")
+            # Remove clinician from subscribed list if already subscribed
+            clinician_id_str = str(request.clinician_id)
+            current_subscribed = caregiver.subscribed_clinicians_ids or []
+            print(f"Current subscribed_clinicians_ids for caregiver: {current_subscribed}")
             
-            db.commit()
+            if clinician_id_str in current_subscribed:
+                # Use direct SQL to remove from the array
+                from sqlalchemy import text
+                
+                db.execute(
+                    text("""
+                        UPDATE ariadne.caregivers 
+                        SET subscribed_clinicians_ids = array_remove(subscribed_clinicians_ids, :clinician_id) 
+                        WHERE user_id = :caregiver_id
+                    """),
+                    {"clinician_id": clinician_id_str, "caregiver_id": request.caregiver_id}
+                )
+                
+                db.refresh(caregiver)
+                print(f"Updated subscribed_clinicians_ids for caregiver: {caregiver.subscribed_clinicians_ids}")
+                db.commit()
+            else:
+                return SubscriptionResponse(
+                    caregiver_id=request.caregiver_id,
+                    subscribed_clinician_id=request.clinician_id,
+                    message="Not subscribed to this clinician"
+                )
+        
+        # Handle clinician unsubscription
+        elif user.role == "clinician":
+            # Get the clinician from clinicians table
+            subscribing_clinician = db.query(Clinician).filter(Clinician.user_id == request.caregiver_id).first()
+            if not subscribing_clinician:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Clinician profile not found"
+                )
+            
+            # Remove clinician from subscribed list if already subscribed
+            clinician_id_str = str(request.clinician_id)
+            current_subscribed = subscribing_clinician.subscribed_clinicians_ids or []
+            print(f"Current subscribed_clinicians_ids for clinician: {current_subscribed}")
+            
+            if clinician_id_str in current_subscribed:
+                # Use direct SQL to remove from the array
+                from sqlalchemy import text
+                
+                db.execute(
+                    text("""
+                        UPDATE ariadne.clinicians 
+                        SET subscribed_clinicians_ids = array_remove(subscribed_clinicians_ids, :clinician_id) 
+                        WHERE user_id = :subscribing_clinician_id
+                    """),
+                    {"clinician_id": clinician_id_str, "subscribing_clinician_id": request.caregiver_id}
+                )
+                
+                db.refresh(subscribing_clinician)
+                print(f"Updated subscribed_clinicians_ids for clinician: {subscribing_clinician.subscribed_clinicians_ids}")
+                db.commit()
+            else:
+                return SubscriptionResponse(
+                    caregiver_id=request.caregiver_id,
+                    subscribed_clinician_id=request.clinician_id,
+                    message="Not subscribed to this clinician"
+                )
+        
         else:
-            return SubscriptionResponse(
-                caregiver_id=request.caregiver_id,
-                subscribed_clinician_id=request.clinician_id,
-                message="Not subscribed to this clinician"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User role '{user.role}' is not supported for clinician unsubscriptions"
             )
         
         return SubscriptionResponse(

@@ -122,13 +122,13 @@ class PostResponse(BaseModel):
     id: str
     image_url: str
     title: str
-    user_id: int
-    date: str
-    read_time: str
-    tags: list[str]
+    user_id: Optional[int] = None
+    date: Optional[str] = None
+    read_time: Optional[str] = None
+    tags: Optional[list[str]] = None
     price: Optional[float] = None
     html_content: str
-    allow_comments: bool
+    allow_comments: Optional[bool] = None
     tier: str
     collection: Optional[str] = None
     attachments: Optional[list[str]] = None
@@ -212,6 +212,22 @@ class PurchaseResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class PurchaseWithPostResponse(BaseModel):
+    id: int
+    user_id: str
+    content_id: str
+    stripe_session_id: Optional[str] = None
+    stripe_payment_intent_id: Optional[str] = None
+    amount: int
+    currency: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    post: Optional[PostResponse] = None
     
     class Config:
         from_attributes = True

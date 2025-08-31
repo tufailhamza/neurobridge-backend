@@ -9,13 +9,15 @@ from ..models.user import User
 from ..models.post import Post
 from ..models.purchases import Purchase
 from ..schemas import (
+    PostResponse,
     StripeCustomerRequest, 
     StripeCustomerResponse,
     StripeCheckoutRequest,
     StripeCheckoutResponse,
     StripeVerifyRequest,
     StripeVerifyResponse,
-    PurchaseResponse
+    PurchaseResponse,
+    PurchaseWithPostResponse
 )
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
@@ -387,20 +389,58 @@ async def handle_payment_intent_failed(payment_intent, db: Session):
         db.rollback()
         logger.error(f"Error handling payment intent failed: {str(e)}")
 
-@router.get("/purchases/{user_id}", response_model=list[PurchaseResponse])
+@router.get("/purchases/{user_id}", response_model=list[PostResponse])
 async def get_user_purchases(
     user_id: str,
     db: Session = Depends(get_db)
 ):
     """
-    Get all purchases for a user
+    Get all purchases for a user with associated post information
     """
     try:
-        purchases = db.query(Purchase).filter(
+        # Join Purchase with Post table on content_id = post.id
+        purchases_with_posts = db.query(Purchase, Post).join(
+            Post, Purchase.content_id == Post.id
+        ).filter(
             Purchase.user_id == user_id
         ).all()
         
-        return purchases
+        logger.info(f"Found {len(purchases_with_posts)} purchases with posts for user {user_id}")
+        
+        # Convert to response format
+        result = []
+        for purchase, post in purchases_with_posts:
+            try:
+                # Create PostResponse object directly since we're returning list[PostResponse]
+                post_response = PostResponse(
+                    id=post.id,
+                    image_url=post.image_url,
+                    title=post.title,
+                    user_id=post.user_id,
+                    date=post.date,
+                    read_time=post.read_time,
+                    tags=post.tags,
+                    price=post.price,
+                    html_content=post.html_content,
+                    allow_comments=post.allow_comments,
+                    tier=post.tier,
+                    collection=post.collection,
+                    attachments=post.attachments,
+                    date_published=post.date_published,
+                    user_name=post.user_name,
+                    updated_at=post.updated_at,
+                    stripe_price_id=post.stripe_price_id,
+                    stripe_product_id=post.stripe_product_id,
+                    scheduled_time=post.scheduled_time
+                )
+                result.append(post_response)
+            except Exception as e:
+                logger.error(f"Error creating PostResponse for post {post.id}: {str(e)}")
+                logger.error(f"Post data: {post.__dict__}")
+                # Skip this post if there's an error
+                continue
+        
+        return result
         
     except Exception as e:
         logger.error(f"Error fetching user purchases: {str(e)}")
