@@ -31,6 +31,8 @@ class Clinician(Base):
     area_of_expertise = Column(String, nullable=False)
     content_preferences_tags = Column(ARRAY(Text), nullable=True)
     subscribed_clinicians_ids = Column(ARRAY(Text), nullable=False, default=[])
+    bio = Column(Text, nullable=False, default='')
+    approach = Column(Text, nullable=False, default='')
     
     # Relationship to User table
     user = relationship("User", back_populates="clinician")

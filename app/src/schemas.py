@@ -159,6 +159,8 @@ class ClinicianResponse(BaseModel):
     license_number: str
     area_of_expertise: str
     content_preferences_tags: Optional[list[str]] = None
+    bio: str
+    approach: str
     
     class Config:
         from_attributes = True

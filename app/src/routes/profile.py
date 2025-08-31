@@ -9,39 +9,6 @@ from ..models.user import User
 from ..models.caregivers import Caregiver
 from ..models.clinician import Clinician
 
-# Request body schemas for profile updates
-class CaregiverProfileUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    username: Optional[str] = None
-    country: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
-    caregiver_role: Optional[str] = None
-    childs_age: Optional[int] = None
-    diagnosis: Optional[str] = None
-    years_of_diagnosis: Optional[int] = None
-    make_name_public: Optional[bool] = None
-    make_personal_details_public: Optional[bool] = None
-    profile_image: Optional[str] = None
-    cover_image: Optional[str] = None
-    bio: Optional[str] = None
-
-class ClinicianProfileUpdate(BaseModel):
-    specialty: Optional[str] = None
-    profile_image: Optional[str] = None
-    prefix: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    country: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
-    clinician_type: Optional[str] = None
-    license_number: Optional[str] = None
-    area_of_expertise: Optional[str] = None
-
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 @router.get("/{user_id}")
@@ -130,6 +97,8 @@ async def get_user_profile(
                 "city": clinician.city,
                 "state": clinician.state,
                 "zip_code": clinician.zip_code,
+                "bio": clinician.bio,
+                "approach": clinician.approach,
                 "clinician_type": clinician.clinician_type,
                 "license_number": clinician.license_number,
                 "area_of_expertise": clinician.area_of_expertise,
@@ -173,7 +142,7 @@ async def update_user_profile(
         
         # Get the request body
         body = await request.json()
-        
+        print(f"Body: {body}")
         # Get the request body based on role
         if user.role == "caregiver":
             
@@ -254,6 +223,8 @@ async def update_user_profile(
                 clinician.city = body['city']
             if 'bio' in body and body['bio'] is not None:
                 clinician.bio = body['bio']
+            if 'approach' in body and body['approach'] is not None:
+                clinician.approach = body['approach']
             if 'state' in body and body['state'] is not None:
                 clinician.state = body['state']
             if 'zip_code' in body and body['zip_code'] is not None:
@@ -264,6 +235,8 @@ async def update_user_profile(
                 clinician.license_number = body['license_number']
             if 'area_of_expertise' in body and body['area_of_expertise'] is not None:
                 clinician.area_of_expertise = body['area_of_expertise']
+            if 'content_preferences_tags' in body and body['content_preferences_tags'] is not None:
+                clinician.content_preferences_tags = body['content_preferences_tags']
             
             db.commit()
             
